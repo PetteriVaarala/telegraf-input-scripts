@@ -1,17 +1,17 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 import argparse
 from re import match
 import numbers
 import subprocess
 import time
 
-parser = argparse.ArgumentParser(description='Snapraid status parser')
-parser.add_argument("--influx",
-                    action="store_true",
-                    help="Use Influx line protocol as output format")
-parser.add_argument("--debug",
-                    action="store_true",
-                    help="Print output to stdout for debuggin purposes")
+parser = argparse.ArgumentParser(description="Snapraid status parser")
+parser.add_argument(
+    "--influx", action="store_true", help="Use Influx line protocol as output format"
+)
+parser.add_argument(
+    "--debug", action="store_true", help="Print output to stdout for debuggin purposes"
+)
 args = parser.parse_args()
 
 
@@ -19,9 +19,7 @@ args = parser.parse_args()
 # Get output of 'snapraid smart -v'
 #
 def get_snapraid_smart():
-    status_output = subprocess.Popen(['sudo', 'snapraid', 'smart', '-v'],
-                                     stdout=subprocess.PIPE
-                                     ).stdout.readlines()
+    status_output = subprocess.getoutput("sudo snapraid smart -v")
     return status_output
 
 
@@ -51,20 +49,23 @@ def parse_smart_report(line):
         smart_stats["error_count"] = -1
 
     if args.influx:
-        print 'snapraid_status,Type=Disk,Serial={5},Device={6},Disk={7} '\
-              'temp={0},power_on_days={1},error_count={2},'\
-              'fail_next_year_percent={3},size_tb={4} {8}'\
-              .format(smart_stats["temp"],
-                      smart_stats["power_on_days"],
-                      smart_stats["error_count"],
-                      smart_stats["fail_next_year_percent"].replace("%", ""),
-                      smart_stats["size_tb"],
-                      smart_stats["serial"],
-                      smart_stats["device"],
-                      smart_stats["disk"],
-                      unix_timestamp)
+        print(
+            "snapraid_status,Type=Disk,Serial={5},Device={6},Disk={7} "
+            "temp={0},power_on_days={1},error_count={2},"
+            "fail_next_year_percent={3},size_tb={4} {8}".format(
+                smart_stats["temp"],
+                smart_stats["power_on_days"],
+                smart_stats["error_count"],
+                smart_stats["fail_next_year_percent"].replace("%", ""),
+                smart_stats["size_tb"],
+                smart_stats["serial"],
+                smart_stats["device"],
+                smart_stats["disk"],
+                unix_timestamp,
+            )
+        )
     if args.debug:
-        print smart_stats
+        print(smart_stats)
 
     return smart_stats
 
@@ -87,15 +88,18 @@ def parse_fail_probabilities(line):
     parity_stat["3_months"] = parity_stats[3]
 
     if args.influx:
-        print 'snapraid_status,Type=Array,FailForParity={0} '\
-              '1_week={1},1_month={2},3_months={3} {4}'\
-              .format(parity_stat["fail_for_parity"],
-                      parity_stat["1_week"].replace("%", ""),
-                      parity_stat["1_month"].replace("%", ""),
-                      parity_stat["3_months"].replace("%", ""),
-                      unix_timestamp)
+        print(
+            "snapraid_status,Type=Array,FailForParity={0} "
+            "1_week={1},1_month={2},3_months={3} {4}".format(
+                parity_stat["fail_for_parity"],
+                parity_stat["1_week"].replace("%", ""),
+                parity_stat["1_month"].replace("%", ""),
+                parity_stat["3_months"].replace("%", ""),
+                unix_timestamp,
+            )
+        )
     if args.debug:
-        print parity_stat
+        print(parity_stat)
 
     return parity_stat
 
@@ -107,12 +111,13 @@ def parse_total_fail_probability(line):
     words = line.strip().split(" ")
     total_fail_probability = int(words[15].strip("%."))
     if args.influx:
-        print 'snapraid_status,Type=Array total_fail_probability={0} {1}'\
-              .format(total_fail_probability,
-                      unix_timestamp)
+        print(
+            "snapraid_status,Type=Array total_fail_probability={0} {1}".format(
+                total_fail_probability, unix_timestamp
+            )
+        )
     if args.debug:
-        print 'Probability disk to fail next year: {0}'\
-              .format(total_fail_probability)
+        print("Probability disk to fail next year: {0}".format(total_fail_probability))
     return total_fail_probability
 
 
@@ -126,17 +131,15 @@ fail_probabilities_per_parity = []
 unix_timestamp = int(round(time.time() * 1000000000))
 
 
-snapraid_smart_output = get_snapraid_smart()
+snapraid_smart_output = get_snapraid_smart().splitlines()
 
 for line in snapraid_smart_output:
     if "Probability that at least one disk is going to fail" in line:
         total_fail_probability = parse_total_fail_probability(line)
-    if match("^\s+\S+\s+\S+\s+\S+\s+\S+%\s+\S+.\d+\s+\S+\s+\/dev\/\S+\s+\S+",
-             line):
+    if match("^\s+\S+\s+\S+\s+\S+\s+\S+%\s+\S+.\d+\s+\S+\s+\/dev\/\S+\s+\S+", line):
         smart_report_disks.append(parse_smart_report(line))
 
     # Probability of data loss in the next year for different parity and
     # combined scrub and repair time
-    if match("^\s+\d+\s+\d+.\d+%\s+\d+.\d+%\s+\d+.\d+%",
-             line):
+    if match("^\s+\d+\s+\d+.\d+%\s+\d+.\d+%\s+\d+.\d+%", line):
         fail_probabilities_per_parity.append(parse_fail_probabilities(line))

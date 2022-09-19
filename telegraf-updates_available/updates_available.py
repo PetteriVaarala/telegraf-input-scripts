@@ -80,8 +80,8 @@ def get_update_count(system):
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
         ).stdout.read()
-        counts = string.split(count, ";")
-        return counts[0], counts[1]
+        count.split(b";")
+        return count[0], count[1]
 
 
 system = get_os()
