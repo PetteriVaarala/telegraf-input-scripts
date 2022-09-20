@@ -132,6 +132,21 @@ def parse_empty_dirs(line):
 
 
 #
+# E.g. "DANGER! In the array there are 15 errors!"
+#
+def parse_errors(line):
+    words = line.strip().split(" ")
+    array_errors = int(words[6])
+    if args.influx:
+        print(
+            "snapraid_status,Type=Array array_errors={0} {1}".format(
+                array_errors, unix_timestamp
+            )
+        )
+    return array_errors
+
+
+#
 # E.g. "The oldest block was scrubbed 9 days ago, the median 3, the newest 0."
 #
 def parse_scrubs(line):
@@ -236,7 +251,7 @@ snapraid_status_output = get_snapraid_status().splitlines()
 
 for line in snapraid_status_output:
     # print line
-    if "memory for the FileSystem." in line:
+    if "memory for the file-system." in line:
         memory_for_filesystem = parse_memory_for_filesystem(line)
     if "of the array is not scrubbed." in line:
         not_scrubbed = parse_not_scrubbed(line)
@@ -250,6 +265,8 @@ for line in snapraid_status_output:
         empty_dirs = parse_empty_dirs(line)
     if "The oldest block was scrubbed" in line:
         scrubs = parse_scrubs(line)
+    if "DANGER! In the array there are" and "errors!" in line:
+        array_errors = parse_errors(line)
     if match("^\s+\d+\s+\d+\s+\d+\s+-?\d+.\d+\s+-?\d+\s+-?\d+\s+\d+%+\s+\w+", line):
         status_report_disks.append(parse_status_report_disk(line))
     if match("^\s+\d+\s+\d+\s+\d+\s+\d+.\d+\s+\d+\s+\d+\s+\d+%+\s+$", line):
@@ -262,5 +279,6 @@ if args.debug:
     print("Hardlinks: {0}".format(hardlinks))
     print("Symlinks: {0}".format(symlinks))
     print("Empty dirs: {0}".format(empty_dirs))
+    print("Array ERRORS!: {0}".format(array_errors))
     print(status_report_disks)
     print(status_report_total)
