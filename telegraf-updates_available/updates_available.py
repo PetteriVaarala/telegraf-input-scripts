@@ -74,14 +74,8 @@ def get_update_count(system):
         return int(count), 0
 
     elif system == "elementary OS" or system == "Ubuntu":
-        count = subprocess.Popen(
-            "/usr/lib/update-notifier/apt-check",
-            shell=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-        ).stdout.read()
-        count.split(b";")
-        return count[0], count[1]
+        count = subprocess.getoutput("/usr/lib/update-notifier/apt-check")
+        return count.split(";")
 
 
 system = get_os()
